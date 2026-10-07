@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_delta_op_reference" model="ir.sequence">
+            <field name="name">Microinvest Delta - OP (cash sale) reference</field>
+            <field name="code">delta.export.op.reference</field>
+            <field name="implementation">no_gap</field>
+            <field name="padding">10</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

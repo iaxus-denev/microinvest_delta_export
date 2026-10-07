@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_delta_op_reference_user,delta.op.reference user,model_delta_op_reference,group_delta_export_user,1,0,0,0
+access_delta_payment_allocation_snapshot_user,delta.payment.allocation.snapshot user,model_delta_payment_allocation_snapshot,group_delta_export_user,1,0,0,0
+access_delta_payment_op_allocation_user,delta.payment.op.allocation user,model_delta_payment_op_allocation,group_delta_export_user,1,0,0,0
+access_delta_export_wizard_user,delta.export.wizard user,model_delta_export_wizard,group_delta_export_user,1,1,1,1

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_delta_export" model="ir.module.category">
+        <field name="name">Microinvest Delta Export</field>
+        <field name="sequence">55</field>
+    </record>
+
+    <record id="res_groups_privilege_delta_export" model="res.groups.privilege">
+        <field name="name">Microinvest Delta Export</field>
+        <field name="category_id" ref="module_category_delta_export"/>
+        <field name="sequence">55</field>
+    </record>
+
+    <!-- Dedicated group for Delta export access, in addition to the
+         standard invoicing-user permission (spec section 10: internal
+         invoice users + a dedicated Delta export permission). No
+         client-equivalent group exists to reuse (no client selected
+         for this build), so this module defines its own small group. -->
+    <record id="group_delta_export_user" model="res.groups">
+        <field name="name">Delta Export User</field>
+        <field name="privilege_id" ref="res_groups_privilege_delta_export"/>
+        <field name="implied_ids" eval="[(4, ref('account.group_account_invoice'))]"/>
+    </record>
+
+    <!-- Multi-company record rules on the technical registries. The
+         export service already scopes every search by company_id via
+         sudo(); these rules are a defense-in-depth backstop for any
+         direct UI/API access to the technical models. -->
+    <record id="rule_delta_op_reference_company" model="ir.rule">
+        <field name="name">Delta OP Reference: multi-company</field>
+        <field name="model_id" ref="model_delta_op_reference"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_delta_export_user'))]"/>
+    </record>
+
+    <record id="rule_delta_payment_allocation_snapshot_company" model="ir.rule">
+        <field name="name">Delta Payment Allocation Snapshot: multi-company</field>
+        <field name="model_id" ref="model_delta_payment_allocation_snapshot"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_delta_export_user'))]"/>
+    </record>
+
+    <record id="rule_delta_payment_op_allocation_company" model="ir.rule">
+        <field name="name">Delta Payment OP Allocation: multi-company</field>
+        <field name="model_id" ref="model_delta_payment_op_allocation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_delta_export_user'))]"/>
+    </record>
+</odoo>
