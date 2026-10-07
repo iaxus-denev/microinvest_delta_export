@@ -176,6 +176,17 @@ class DeltaExportService:
             return None
         return protocol.format_document_number(raw)
 
+    def _mol(self, partner, *, document, field_name='МОЛ') -> str | None:
+        """Resolve the MOL (materially-responsible person, field 8) from
+        the client-confirmed existing ``res.partner.x_itc_liable_person``
+        field (per the project's consultant Q&A). Falls back to an empty
+        string if that field doesn't exist on this database (e.g. a
+        vanilla dev/test environment without the client's customization)
+        or is unset - never guesses from the document's salesperson.
+        """
+        value = partner.x_itc_liable_person if 'x_itc_liable_person' in partner._fields else ''
+        return self._checked_text(value or '', document=document, field_name=field_name)
+
     def _eik_and_vat(self, commercial_partner, *, document) -> tuple[str, str] | None:
         """Resolve VAT (field 11) and EIK/company_registry (field 12)
         from ``commercial_partner``. If ``company_registry`` is empty,
@@ -237,8 +248,7 @@ class DeltaExportService:
         vat, eik = identifiers
 
         partner_name = self._checked_text(partner.name, document=move.display_name, field_name='клиент')
-        mol = self._checked_text(move.invoice_user_id.name if move.invoice_user_id else '',
-                                  document=move.display_name, field_name='МОЛ')
+        mol = self._mol(partner, document=move.display_name)
         city = self._checked_text(partner.city, document=move.display_name, field_name='град')
         address = self._checked_text(
             ' '.join(filter(None, [partner.street, partner.street2])),
@@ -640,8 +650,7 @@ class DeltaExportService:
         vat, eik = identifiers
 
         partner_name = self._checked_text(partner.name, document=order.display_name, field_name='клиент')
-        mol = self._checked_text(order.user_id.name if order.user_id else '',
-                                  document=order.display_name, field_name='МОЛ')
+        mol = self._mol(partner, document=order.display_name)
         city = self._checked_text(partner.city, document=order.display_name, field_name='град')
         address = self._checked_text(
             ' '.join(filter(None, [partner.street, partner.street2])),
@@ -744,8 +753,7 @@ class DeltaExportService:
         vat, eik = identifiers
 
         partner_name = self._checked_text(partner.name, document=move.display_name, field_name='клиент (плащане)')
-        mol = self._checked_text(move.invoice_user_id.name if move.invoice_user_id else '',
-                                  document=move.display_name, field_name='МОЛ (плащане)')
+        mol = self._mol(partner, document=move.display_name, field_name='МОЛ (плащане)')
         city = self._checked_text(partner.city, document=move.display_name, field_name='град (плащане)')
         address = self._checked_text(
             ' '.join(filter(None, [partner.street, partner.street2])),
@@ -790,9 +798,7 @@ class DeltaExportService:
         vat, eik = identifiers
         partner_name = self._checked_text(
             partner.name, document=order.display_name, field_name='клиент (ОП плащане)')
-        mol = self._checked_text(
-            order.user_id.name if order.user_id else '', document=order.display_name,
-            field_name='МОЛ (ОП плащане)')
+        mol = self._mol(partner, document=order.display_name, field_name='МОЛ (ОП плащане)')
         city = self._checked_text(
             partner.city, document=order.display_name, field_name='град (ОП плащане)')
         address = self._checked_text(

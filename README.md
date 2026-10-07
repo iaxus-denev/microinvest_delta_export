@@ -53,27 +53,37 @@ drift. Field 16 (real VAT) is the literal string `0` (no decimals) on
 cost rows (`code 8`) and `0.00` (with decimals) on sale/payment rows —
 this distinction is intentional and tested (see `test_c05_zero_vat`).
 
-## Explicit field-mapping decisions (pending real-client verification)
+## Explicit field-mapping decisions
 
 The assignment specification explicitly leaves several field sources
 open to be connected to whatever the *current* client project already
 uses, rather than invented. **No client project is targeted by this
 build** (confirmed with the requester — see `docs/IMPLEMENTATION_QUESTIONS.md`
 in the sibling `delta_export_assignment_bundle` repo for the full
-decision record), so the following standard Odoo fields were chosen as
-the most defensible vanilla-Odoo-19 mapping, mirroring the patterns
-already used by the sibling `account_business_navigator_export` module
-built for a real client (`ultradental`):
+decision record). The mappings below were reviewed and **confirmed by
+the client's consultant** (see `docs/CONSULTANT_QUESTIONNAIRE_answers.md`):
+official document numbers are purely numeric in the real project,
+`res.partner.x_itc_liable_person` is the real client's MOL field,
+`account.move.partner_bank_id`/`narration` are the right bank/note
+sources, `res.partner.company_registry` is the right EIK source, cash
+payments in the real process always go through standard Odoo
+reconciliation (no payments bypass reconciliation), and OP-without-invoice
+sales are always converted to a regular invoice before being paid in
+cash in the real process (so the dedicated `delta.payment.op.allocation`
+explicit-link model remains available for completeness/defense-in-depth,
+but is not expected to be the primary path in the real client process).
+The access-rights group remains the module's own standalone group (no
+existing client group to mirror).
 
 | Field | Source | Notes |
 |---|---|---|
-| Official document number (field 3) | `account.move.name` | Must resolve to a purely numeric string ≤ 10 digits (then zero-padded to 10). If the journal's sequence produces non-numeric names (e.g. `INV/2026/00001`), a specific `UserError` is raised naming the document — the number is never stripped/mangled to force a fit. **A real client project must either configure that journal with a purely numeric sequence, or this module's `_validated_document_number()` must be extended with a small adapter reading the client's actual official-number field.** |
-| MOL ("мол"/responsible person, field 8) | `account.move.invoice_user_id.name` (invoices/credit notes) / `sale_order.user_id.name` (OP rows) | No standard Odoo field models "МОЛ" directly; the salesperson on the document is the closest analogous existing field. **Pending real-client verification** — if the client project has its own "МОЛ" field, this is a one-line change. |
-| Bank/account (field 13) | `account.move.partner_bank_id.acc_number`, else three spaces (`'   '`) | OP rows always use three spaces (no analogous field on `sale.order`). |
-| Note (field 15) | `html2plaintext(account.move.narration or '')`, else a single space | OP rows always use a single space. |
+| Official document number (field 3) | `account.move.name` | Must resolve to a purely numeric string ≤ 10 digits (then zero-padded to 10). **Confirmed by client consultant**: the real project's invoice/credit-note sequence is purely numeric. If a specific journal ever produces a non-numeric name (e.g. `INV/2026/00001`), a specific `UserError` is still raised naming the document — the number is never stripped/mangled to force a fit. |
+| MOL ("мол"/responsible person, field 8) | `res.partner.x_itc_liable_person` (document's billing partner, for both invoice/credit-note and OP rows) | **Confirmed by client consultant.** This is a pre-existing custom field on `res.partner` in the client project (not part of this module, not part of standard Odoo). If the field doesn't exist on a given database (e.g. a plain vanilla dev/test install), the export falls back to an empty MOL value rather than erroring — see `DeltaExportService._mol()`. |
+| Bank/account (field 13) | `account.move.partner_bank_id.acc_number`, else three spaces (`'   '`) | **Confirmed by client consultant.** OP rows always use three spaces (no analogous field on `sale.order`). |
+| Note (field 15) | `html2plaintext(account.move.narration or '')`, else a single space | **Confirmed by client consultant.** OP rows always use a single space. |
 | OP partner (billing identity for `code 2`/`code 8` OP rows) | `sale_order.partner_invoice_id` (+ its `commercial_partner_id` for VAT/EIK) | Per the assignment's explicit resolution. |
 | Payment partner (field 7/9/10/11/12 on `code 10` rows) | The **linked document's** `partner_id`/`commercial_partner_id` (`move.partner_id`, never `payment.partner_id` directly) | Per the assignment's explicit resolution — a payment's own partner is not used, since it must reflect the document being paid. |
-| EIK/company registry fallback (field 12) | `partner.company_registry`, else: strip a leading `BG` from `partner.vat` **only if** the remainder is purely numeric | Never alters an already-present `company_registry`. |
+| EIK/company registry fallback (field 12) | `partner.company_registry`, else: strip a leading `BG` from `partner.vat` **only if** the remainder is purely numeric | **Confirmed by client consultant.** Never alters an already-present `company_registry`. |
 
 ## Payment allocation adapter (`models/delta_payment_allocation.py`)
 
@@ -185,6 +195,12 @@ These are explicit, intentional scope decisions — not bugs:
   to a document, through purely standard Odoo flows, was not
   straightforward in a unit test; the test instead proves that two
   independent normal payments both export their own correct allocation.
+  **Confirmed by client consultant**: in the real process, cash
+  payments are never linked to a document without going through
+  standard Odoo reconciliation, so this simplification is not expected
+  to be a real-world gap — it's retained purely as defense-in-depth
+  (an explicit `UserError` instead of a silent wrong/zero allocation
+  if this assumption is ever violated).
 * `test_c06_multiple_allocations` uses its own self-consistent amounts
   (two orders of 72.00 and 36.00, one grouped payment of 90.00) rather
   than literally reproducing `acceptance_cases.json`'s abstract
